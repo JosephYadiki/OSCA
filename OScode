@@ -1,0 +1,135 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct process {
+    int pid; 
+    int burst_time; 
+    int arrival_time; 
+    int priority; 
+    int remaining_time;
+} Process;
+
+void minHeapify(Process* queue, int i, int n) {
+    int smallest = i;
+    int l = 2 * i + 1;
+    int r = 2 * i + 2;
+    if (l < n && queue[l].priority < queue[smallest].priority)
+        smallest = l;
+  
+    if (r < n && queue[r].priority < queue[smallest].priority)
+        smallest = r;
+  
+    if (smallest != i) {
+        Process temp = queue[i];
+        queue[i] = queue[smallest];
+        queue[smallest] = temp;
+        minHeapify(queue, smallest, n);
+    }
+}
+
+Process extractMin(Process* queue, int* n) {
+    Process root = queue[0];
+    queue[0] = queue[*n - 1];
+    (*n)--;
+    minHeapify(queue, 0, *n);
+    return root;
+}
+
+void insertProcess(Process* queue, int* n, Process x) {
+    (*n)++;
+    int i = *n - 1;
+    while (i > 0 && x.priority < queue[(i - 1) / 2].priority) {
+        queue[i] = queue[(i - 1) / 2];
+        i = (i - 1) / 2;
+    }
+    queue[i] = x;
+}
+
+void printQueue(Process* queue, int n) {
+    for (int i = 0; i < n; i++)
+        printf("%d ", queue[i].pid);
+    printf("\n");
+}
+
+int main() {
+    int n; 
+    printf("Enter the number of processes: ");
+    scanf("%d", &n);
+
+    Process* x = (Process*) malloc(n * sizeof(Process)); 
+    for (int i = 0; i < n; i++) {
+        printf("Enter details of process %d:\n", i + 1);
+        printf("Process ID: ");
+        scanf("%d", &x[i].pid);
+        printf("Burst time: ");
+        scanf("%d", &x[i].burst_time);
+        printf("Arrival time: ");
+        scanf("%d", &x[i].arrival_time);
+        printf("Priority: ");
+        scanf("%d", &x[i].priority);
+        x[i].remaining_time = x[i].burst_time;
+    }
+
+    
+    for (int i = 0; i < n - 1; i++) {
+        for (int j = 0; j < n - i - 1; j++) {
+            if (x[j].arrival_time > x[j+1].arrival_time) {
+                Process temp = x[j];
+                x[j] = x[j+1];
+                x[j+1] = temp;
+            }
+        }
+    }
+    
+    Process* q1 = (Process*) malloc(n * sizeof(Process)); 
+    int q1size = 0;
+    Process* q2 = (Process*) malloc(n * sizeof(Process)); 
+    int q2size = 0;
+    int currentTime = x[0].arrival_time; 
+    int completed = 0; 
+    while (completed < n) {
+        while (x[0].arrival_time <= currentTime && q1size < n) {
+            insertProcess(q1, &q1size, x[0]);
+            for (int i = 0; i < n - 1; i++)
+                x[i] = x[i+1];
+            n--;
+        }
+        if (q1size > 0) {
+            Process x = extractMin(q1, &q1size);
+            printf("Executing process %d from queue 1 at time %d\n", x.pid, currentTime);
+            x.remaining_time -= 2;
+            currentTime += 2;
+            if (x.remaining_time > 0)
+                insertProcess(q2, &q2size, x);
+            else {
+                printf("Process %d completed at time %d\n", x.pid, currentTime);
+                completed++;
+            }
+        }
+        else if (q2size > 0) {
+            Process x = q2[0];
+            int i = 0;
+            for (int j = 1; j < q2size; j++) {
+                if (q2[j].remaining_time < x.remaining_time) {
+                    x = q2[j];
+                    i = j;
+                }
+            }
+            printf("Executing process %d from queue 2 at time %d\n", x.pid, currentTime);
+            x.remaining_time--;
+            currentTime++;
+            if (x.remaining_time == 0) {
+                printf("Process %d completed at time %d\n", x.pid, currentTime);
+                completed++;
+                for (int j = i; j < q2size - 1; j++)
+                    q2[j] = q2[j+1];
+                q2size--;
+            }
+        }
+        else {
+            currentTime = x[0].arrival_time;
+        }
+    }
+    free(x);free(q1);free(q2);
+    return 0;
+}
